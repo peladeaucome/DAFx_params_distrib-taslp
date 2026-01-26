@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<link rel="stylesheet" href="style.css" />
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peladeau - TASLP 2026 submission</title>
+</head>
+
+<body>
+    <header>
+        <div class="titlecenter">
+            <h1>
+                Estimating distributions in DDSP systems: applications to FM synthesis and audio effects estimation
+            </h1>
+        </div>
+        <div class="center">
+            <p style="text-align: center;"> <a
+                    href="mailto:come.peladeau@telecom-paris.fr?subject=Parameter distributions">Côme
+                    Peladeau</a><sup>&#9839;</sup>, Dominique Fourer<sup>&#9837;</sup> and Geoffroy
+                Peeters<sup>&#9839;</sup></p>
+            <p style="text-align: center;">&#9839;: <a
+                    href="https://www.telecom-paris.fr/en/research/labs/information-processing-ltci">LTCI</a>, Télécom
+                Paris, France.</p>
+            <p style="text-align: center;">&#9837;: <a href="https://www.ibisc.univ-evry.fr/en/">IBISC</a>, Univ Evry
+                Paris-Saclay, France.</p>
+            <p style="text-align: center;">Submitted to IEEE TASLP</p>
+        </div>
+        <div class="center" style="max-width: 600px;">
+            <div class="container">
+                <div><a href=https://github.com/peladeaucome/DAFx_params_distrib-taslp>
+                        <p>
+                            Code
+                        </p>
+                    </a></div>
+            </div>
+        </div>
+    </header>
+
+
+    <div class="center">
+        <hr>
+        <section>
+            <h2>
+                Abstract
+            </h2>
+            <p>
+                Recent studies have proposed to synthesize audio signals using explicit digital signal processing
+                algorithms which parameters are estimated using deep learning models.
+                These models are optimized such that the output of the algorithm matches a given target input signal. To
+                achieve this, the algorithm should be differentiable, hence the name differentiable digital signal
+                processing (DDSP).
+                However, these algorithms are usually not injective functions w.r.t. their parameters, i.e. multiple
+                different parameter combinations can generate the same output.
+                This is in contradiction with recent studies which attempt to estimate a single set of parameters in a
+                deterministic way: they output a single parameter combination to synthesize a given sound.
+                In this work, we propose a probabilist model that learns all these combinations.
+                For this, we propose to extend the variational auto-encoder (VAE) model (which relies on a single
+                Gaussian distribution) to the use of mixtures of Gaussians (MoG) followed by normalizing flows (NF). It
+                is used to model the target parameter distribution.
+                We optimize our model using the sum of two loss terms: an audio reconstruction loss computed using
+                differentiable signal processing (so that the parameters accurately reproduce the target sound) and an
+                entropy loss, which enforces the model to output diverse parameter combinations.
+                We evaluate successfully our approach on two tasks: estimating the parameters of a frequency modulation
+                (FM) synthesizer and of a full mastering effects chain (equalizer, dynamic range compressor, clipper).
+            </p>
+
+            <img src="sources/BEAFX_audio_inference_2.svg" alt="Proposed approach" class="figure">
+            <br>
+            <hr>
+            <p>
+                We estimate the distributions using a normalizing flows framework.
+            </p>
+        </section>
+        <hr>
+        <section>
+            <h2>
+                Estimation of FM synthesis parameters
+            </h2>
+
+            <p>
+                We show here audio examples from our FM synthesis parameters estimation.
+                We do this on 2 datasets: a <b>random dataset</b> (with random parameters) and a <b>real dataset</b>.
+            </p>
+
+            <h3>
+                Random dataset
+            </h3>
+            <p>
+                We show here non cherry-picked audio examples from our models. The samples are just random samples from
+                the approximate distribution.
+                The MAP is the <i>maximum-a-posteriori</i> sample from the distribution, if available.
+
+                We show here the results for an audio example from the <b>random dataset</b>.
+            </p>
+
+            <table>
+                <tbody>
+                    <tr class="top bottom">
+                        <td>
+                            Target
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\GT.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr class="bottom">
+                        <td border-left="1px solid #000">
+                            Model
+                        </td>
+                        <td colspan="3">
+                            Samples
+                        </td>
+                        <td>
+                            MAP
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Deter.
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\deter_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>                    
+                    <tr>
+                        <td>
+                            Gauss-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Mog-Full-K6-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-1-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-1-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-1-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-1-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L2 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-2-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-2-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-2-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\gauss-2-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-full-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            MoG-Unif-K24-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-24-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-24-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-24-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\mog-unif-24-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            CNF-P2T
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-p2t_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-p2t_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-p2t_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            CNF-MLP
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-ffn_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-ffn_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\rand\synthperm-ffn_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>
+                Real dataset
+            </h3>
+            <p>
+                We show here non cherry-picked audio examples from our models. The samples are just random samples from
+                the approximate distribution.
+                The MAP is the <i>maximum-a-posteriori</i> sample from the distribution, if available.
+
+                We show here the results for a first audio example from the <b>real dataset</b>.
+            </p>
+
+            <table>
+                <tbody>
+                    <tr class="top bottom">
+                        <td>
+                            Target
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\GT.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr class="bottom">
+                        <td border-left="1px solid #000">
+                            Model
+                        </td>
+                        <td colspan="3">
+                            Samples
+                        </td>
+                        <td>
+                            MAP
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Deter.
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\deter_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>                    
+                    <tr>
+                        <td>
+                            Gauss-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Mog-Full-K6-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-1-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-1-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-1-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-1-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L2 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-2-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-2-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-2-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\gauss-2-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-full-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            MoG-Unif-K24-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-24-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-24-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-24-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\mog-unif-24-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            CNF-P2T
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-p2t_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-p2t_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-p2t_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            CNF-MLP
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-ffn_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-ffn_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_7\synthperm-ffn_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+
+            <p>
+                We show here the results for a second audio example from the <b>real dataset</b>.
+            </p>
+
+
+            <table>
+                <tbody>
+                    <tr class="bottom top">
+                        <td>
+                            Target
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\GT.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr class="bottom">
+                        <td border-left="1px solid #000">
+                            Model
+                        </td>
+                        <td colspan="3">
+                            Samples
+                        </td>
+                        <td>
+                            MAP
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Deter.
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\deter_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>                    
+                    <tr>
+                        <td>
+                            Gauss-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            Mog-Full-K6-L0 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-vae_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-vae_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-vae_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-vae_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-1-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-1-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-1-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-1-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Gauss-L2 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-2-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-2-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-2-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\gauss-2-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-full-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            MoG-Full-K6-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-6-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-6-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-6-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-6-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            MoG-Unif-K24-L1 SA
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-24-ann_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-24-ann_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-24-ann_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\mog-unif-24-ann_MAP.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            CNF-P2T
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-p2t_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-p2t_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-p2t_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                    <tr class="bottom">
+                        <td>
+                            CNF-MLP
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-ffn_0.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-ffn_1.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                        <td>
+                            <audio controls>
+                                <source src="sources\audio\ddx7\lv\idx_14\synthperm-ffn_2.opus" type="audio/ogg">
+                            </audio>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        <hr>
+        <section>
+            <h2>
+                Estimation of mastering effects parameters
+            </h2>
+        </section>
+    </div>
+</body>
+
+</html>
