@@ -9,6 +9,11 @@ There are models programmed for two tasks in this repository:
  - Estimation of FM synthesis parameters
  - Estimation of mastering audio effects
 
+When downloading the repo, the needed libraries can be installed with the `requirements.txt`:
+```bash
+pip install -r requirements.txt
+```
+
 ### FM synthesis estimation
 
 Those models are trained using the `train_ddx7_56.py` file.
@@ -17,12 +22,12 @@ Examples of the commands used to train the various models can be found in the `_
 
 To train the Deterministic model:
 ```bash
-    python train_ddx7_56.py model=1bandeq/deter hydra=deter
+python train_ddx7_56.py model=1bandeq/deter hydra=deter
 ```
 
 In order to train one of the probabilistic models:
 ```bash
-    python train_ddx7_56.py model=1bandeq/infer hydra=infer
+python train_ddx7_56.py model=1bandeq/infer hydra=infer
 ```
 You then can chose between the various models we proposed in the paper. For instance, for the Gauss-L2 model:
 ```bash
@@ -53,6 +58,9 @@ python train_mastering.py hydra=deter model.name=deter
 ```
 This is used to train the deterministic model
 
+#### Evaluation
+
+The models are evaluated using the `test_mastering.py` file.
 
 # Citing this work
 
